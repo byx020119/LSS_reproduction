@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import matplotlib.patches as mpatches
+import matplotlib.lines as mlines
 from pyquaternion import Quaternion
 from PIL import Image
 from nuscenes.map_expansion.map_api import NuScenesMap
@@ -176,16 +177,17 @@ def plot_nusc_map(rec, nusc_maps, nusc, scene2map, dx, bx):
     line_names = ['road_divider', 'lane_divider']
     lmap = get_local_map(nusc_maps[map_name], center,
                          50.0, poly_names, line_names)
+    # plot the map
     for name in poly_names:
         for la in lmap[name]:
             pts = (la - bx) / dx
-            plt.fill(pts[:, 1], pts[:, 0], c=(1.00, 0.50, 0.31), alpha=0.2)
+            plt.fill(pts[:, 1], pts[:, 0], c=(0.31, 1.00, 0.50), alpha=0.2)
     for la in lmap['road_divider']:
         pts = (la - bx) / dx
-        plt.plot(pts[:, 1], pts[:, 0], c=(0.0, 0.0, 1.0), alpha=0.5)
+        plt.plot(pts[:, 1], pts[:, 0], c=(1.0, 0.0, 0.0), alpha=0.5)
     for la in lmap['lane_divider']:
         pts = (la - bx) / dx
-        plt.plot(pts[:, 1], pts[:, 0], c=(159./255., 0.0, 1.0), alpha=0.5)
+        plt.plot(pts[:, 1], pts[:, 0], c=(0.0, 0.0, 1.0), alpha=0.5)
 
 
 def add_ego(bx, dx):
@@ -199,7 +201,7 @@ def add_ego(bx, dx):
     ])
     pts = (pts - bx) / dx
     pts[:, [0,1]] = pts[:, [1,0]]
-    plt.fill(pts[:, 0], pts[:, 1], '#76b900')
+    plt.fill(pts[:, 0], pts[:, 1], c=(1.0, 0.0, 0.0))
 
 
 def viz_model_preds(version,
@@ -266,7 +268,7 @@ def viz_model_preds(version,
 
     val = 0.01
     fH, fW = final_dim
-    fig = plt.figure(figsize=(3*fW*val, (1.5*fW + 2*fH)*val))
+    fig = plt.figure(figsize=(3*fW*val*2, (1.5*fW + 2*fH)*val*2))
     gs = mpl.gridspec.GridSpec(3, 3, height_ratios=(1.5*fW, fH, fH))
     gs.update(wspace=0.0, hspace=0.0, left=0.0, right=1.0, top=1.0, bottom=0.0)
 
@@ -283,6 +285,7 @@ def viz_model_preds(version,
                     )
             out = out.sigmoid().cpu()
 
+            # save pictures
             for si in range(imgs.shape[0]):
                 plt.clf()
                 for imgi, img in enumerate(imgs[si]):
@@ -300,11 +303,13 @@ def viz_model_preds(version,
                 ax.get_yaxis().set_ticks([])
                 plt.setp(ax.spines.values(), color='b', linewidth=2)
                 plt.legend(handles=[
-                    mpatches.Patch(color=(0.0, 0.0, 1.0, 1.0), label='Output Vehicle Segmentation'),
-                    mpatches.Patch(color='#76b900', label='Ego Vehicle'),
-                    mpatches.Patch(color=(1.00, 0.50, 0.31, 0.8), label='Map (for visualization purposes only)')
-                ], loc=(0.01, 0.76))
-                plt.imshow(out[si].squeeze(0), vmin=0, vmax=1, cmap='Blues')
+                    mpatches.Patch(color=(138./255, 43./255, 226./255, 1.0), label='Output Vehicle Segmentation'),
+                    mpatches.Patch(color=(1.0, 0.0, 0.0), label='Ego Vehicle'),
+                    mpatches.Patch(color=(0.31, 1.00, 0.50, 0.5), label='Map (for visualization purposes only)'),
+                    mlines.Line2D([], [], color=(1.0, 0.0, 0.0), alpha=0.5, label='Road divider'),
+                    mlines.Line2D([], [], color=(0.0, 0.0, 1.0), alpha=0.5, label='Lane divider')
+                ], loc=(0.01, 0.80))
+                plt.imshow(out[si].squeeze(0), vmin=0, vmax=1, cmap='Purples')
 
                 # plot static map (improves visualization)
                 rec = loader.dataset.ixes[counter]
@@ -319,11 +324,13 @@ def viz_model_preds(version,
                 ax1.get_yaxis().set_ticks([])
                 plt.setp(ax1.spines.values(), color='b', linewidth=2)
                 plt.legend(handles=[
-                    mpatches.Patch(color=(0.0, 0.0, 1.0, 1.0), label='Bin Imgs (ground truth)'),
-                    mpatches.Patch(color='#76b900', label='Ego Vehicle'),
-                    mpatches.Patch(color=(1.00, 0.50, 0.31, 0.8), label='Map (for visualization purposes only)')
-                ], loc=(0.01, 0.76))
-                plt.imshow(binimgs[si].squeeze(0), vmin=0, vmax=1, cmap='Blues')
+                    mpatches.Patch(color=(138./255, 43./255, 226./255, 1.0), label='Bin Imgs (ground truth)'),
+                    mpatches.Patch(color=(1.0, 0.0, 0.0), label='Ego Vehicle'),
+                    mpatches.Patch(color=(0.31, 1.00, 0.50, 0.5), label='Map (for visualization purposes only)'),
+                    mlines.Line2D([], [], color=(1.0, 0.0, 0.0), alpha=0.5, label='Road divider'),
+                    mlines.Line2D([], [], color=(0.0, 0.0, 1.0), alpha=0.5, label='Lane divider')
+                ], loc=(0.01, 0.80))
+                plt.imshow(binimgs[si].squeeze(0), vmin=0, vmax=1, cmap='Purples')
 
                 # plot static map (improves visualization)
                 rec = loader.dataset.ixes[counter]
@@ -339,11 +346,13 @@ def viz_model_preds(version,
                 ax2.get_yaxis().set_ticks([])
                 plt.setp(ax2.spines.values(), color='b', linewidth=2)
                 plt.legend(handles=[
-                    mpatches.Patch(color=(0.0, 0.0, 1.0, 1.0), label='Iou Area (intersection over union)'),
-                    mpatches.Patch(color='#76b900', label='Ego Vehicle'),
-                    mpatches.Patch(color=(1.00, 0.50, 0.31, 0.8), label='Map (for visualization purposes only)')
-                ], loc=(0.01, 0.76))
-                plt.imshow(non_zero_elements[si].squeeze(0), vmin=0, vmax=1, cmap='Blues')
+                    mpatches.Patch(color=(138./255, 43./255, 226./255, 1.0), label='Iou Area (intersection over union)'),
+                    mpatches.Patch(color=(1.0, 0.0, 0.0), label='Ego Vehicle'),
+                    mpatches.Patch(color=(0.31, 1.00, 0.50, 0.5), label='Map (for visualization purposes only)'),
+                    mlines.Line2D([], [], color=(1.0, 0.0, 0.0), alpha=0.5, label='Road divider'),
+                    mlines.Line2D([], [], color=(0.0, 0.0, 1.0), alpha=0.5, label='Lane divider')
+                ], loc=(0.01, 0.80))
+                plt.imshow(non_zero_elements[si].squeeze(0), vmin=0, vmax=1, cmap='Purples')
 
                 # plot static map (improves visualization)
                 rec = loader.dataset.ixes[counter]
@@ -351,6 +360,9 @@ def viz_model_preds(version,
                 plt.xlim((non_zero_elements.shape[3], 0))
                 plt.ylim((0, non_zero_elements.shape[3]))
                 add_ego(bx, dx)
+
+                # # show the plot
+                # plt.show()
 
                 save_dir = 'runs/imgs'
                 os.makedirs(save_dir, exist_ok=True)
