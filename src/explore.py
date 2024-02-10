@@ -303,9 +303,10 @@ def viz_model_preds(version,
                 ax.get_yaxis().set_ticks([])
                 plt.setp(ax.spines.values(), color='b', linewidth=2)
                 plt.legend(handles=[
-                    mpatches.Patch(color=(138./255, 43./255, 226./255, 1.0), label='Output Vehicle Segmentation'),
+                    mpatches.Patch(color=(138./255, 43./255, 226./255, 1.0), label='Vehicle Segmentation (predict)'),
+                    # for visualization purposes only
                     mpatches.Patch(color=(1.0, 0.0, 0.0), label='Ego Vehicle'),
-                    mpatches.Patch(color=(0.31, 1.00, 0.50, 0.5), label='Map (for visualization purposes only)'),
+                    mpatches.Patch(color=(0.31, 1.00, 0.50, 0.5), label='Map'),
                     mlines.Line2D([], [], color=(1.0, 0.0, 0.0), alpha=0.5, label='Road divider'),
                     mlines.Line2D([], [], color=(0.0, 0.0, 1.0), alpha=0.5, label='Lane divider')
                 ], loc=(0.01, 0.80))
@@ -325,8 +326,9 @@ def viz_model_preds(version,
                 plt.setp(ax1.spines.values(), color='b', linewidth=2)
                 plt.legend(handles=[
                     mpatches.Patch(color=(138./255, 43./255, 226./255, 1.0), label='Bin Imgs (ground truth)'),
+                    # for visualization purposes only
                     mpatches.Patch(color=(1.0, 0.0, 0.0), label='Ego Vehicle'),
-                    mpatches.Patch(color=(0.31, 1.00, 0.50, 0.5), label='Map (for visualization purposes only)'),
+                    mpatches.Patch(color=(0.31, 1.00, 0.50, 0.5), label='Map'),
                     mlines.Line2D([], [], color=(1.0, 0.0, 0.0), alpha=0.5, label='Road divider'),
                     mlines.Line2D([], [], color=(0.0, 0.0, 1.0), alpha=0.5, label='Lane divider')
                 ], loc=(0.01, 0.80))
@@ -347,8 +349,9 @@ def viz_model_preds(version,
                 plt.setp(ax2.spines.values(), color='b', linewidth=2)
                 plt.legend(handles=[
                     mpatches.Patch(color=(138./255, 43./255, 226./255, 1.0), label='Iou Area (intersection over union)'),
+                    # for visualization purposes only
                     mpatches.Patch(color=(1.0, 0.0, 0.0), label='Ego Vehicle'),
-                    mpatches.Patch(color=(0.31, 1.00, 0.50, 0.5), label='Map (for visualization purposes only)'),
+                    mpatches.Patch(color=(0.31, 1.00, 0.50, 0.5), label='Map'),
                     mlines.Line2D([], [], color=(1.0, 0.0, 0.0), alpha=0.5, label='Road divider'),
                     mlines.Line2D([], [], color=(0.0, 0.0, 1.0), alpha=0.5, label='Lane divider')
                 ], loc=(0.01, 0.80))
