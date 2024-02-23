@@ -289,6 +289,7 @@ class NuscData(torch.utils.data.Dataset):
                 (pts - self.bx[:2] + self.dx[:2]/2.) / self.dx[:2]
                 ).astype(np.int32)
             pts[:, [1, 0]] = pts[:, [0, 1]]
+            # fillPoly takes pts in (y,x) format
             cv2.fillPoly(img, [pts], 1.0)
 
         return torch.Tensor(img).unsqueeze(0)
