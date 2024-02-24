@@ -292,6 +292,37 @@ class NuscData(torch.utils.data.Dataset):
             # fillPoly takes pts in (y,x) format
             cv2.fillPoly(img, [pts], 1.0)
 
+        # import matplotlib.pyplot as plt
+        # plt.imshow(img, vmin=0, vmax=1, cmap='Purples')
+        # plt.show()
+        return torch.Tensor(img).unsqueeze(0)
+
+    def get_binimg(self, rec):
+        egopose = self.nusc.get('ego_pose',
+                                self.nusc.get('sample_data', rec['data']['LIDAR_TOP'])['ego_pose_token'])
+        trans = -np.array(egopose['translation'])
+        rot = Quaternion(egopose['rotation']).inverse
+        img = np.zeros((self.nx[0], self.nx[1]))
+        for tok in rec['anns']:
+            inst = self.nusc.get('sample_annotation', tok)
+            # add category for lyft
+            if not inst['category_name'].split('.')[0] == 'vehicle':
+                continue
+            box = Box(inst['translation'], inst['size'], Quaternion(inst['rotation']))
+            box.translate(trans)
+            box.rotate(rot)
+
+            pts = box.bottom_corners()[:2].T
+            pts = np.round(
+                (pts - self.bx[:2] + self.dx[:2]/2.) / self.dx[:2]
+                ).astype(np.int32)
+            pts[:, [1, 0]] = pts[:, [0, 1]]
+            # fillPoly takes pts in (y,x) format
+            cv2.fillPoly(img, [pts], 1.0)
+
+        # import matplotlib.pyplot as plt
+        # plt.imshow(img, vmin=0, vmax=1, cmap='Purples')
+        # plt.show()
         return torch.Tensor(img).unsqueeze(0)
 
     def __str__(self):

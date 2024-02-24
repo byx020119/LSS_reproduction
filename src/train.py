@@ -15,6 +15,7 @@ train
 def train(version,
             dataroot='/data/nuscenes',
             weightsdir='./runs/weights',
+            pretrained_weights_path = './model525000.pt',
             nepochs=10000,
             gpuid=1,
 
@@ -62,6 +63,7 @@ def train(version,
 
     device = torch.device('cpu') if gpuid < 0 else torch.device(f'cuda:{gpuid}')
 
+    # tensor shape from (bsz, num, 3, H, W) to (bsz, outC, 200, 200)
     model = compile_model(grid_conf, data_aug_conf, outC=1)
     model.to(device)
 
@@ -71,6 +73,11 @@ def train(version,
 
     writer = SummaryWriter(logdir=logdir)
     val_step = 1000 if version == 'mini' else 10000
+
+    # Check if pre-trained weights exist
+    if os.path.exists(pretrained_weights_path):
+        print("Loading pre-trained weights...")
+        model.load_state_dict(torch.load(pretrained_weights_path))
 
     model.train()
     counter = 0
