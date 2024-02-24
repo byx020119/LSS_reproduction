@@ -298,6 +298,10 @@ class NuscData(torch.utils.data.Dataset):
         return torch.Tensor(img).unsqueeze(0)
 
     def get_binimg(self, rec):
+        """
+        Get a binary image of the scene.
+        shape (1,200,200) class number 1
+        """
         egopose = self.nusc.get('ego_pose',
                                 self.nusc.get('sample_data', rec['data']['LIDAR_TOP'])['ego_pose_token'])
         trans = -np.array(egopose['translation'])
@@ -324,6 +328,51 @@ class NuscData(torch.utils.data.Dataset):
         # plt.imshow(img, vmin=0, vmax=1, cmap='Purples')
         # plt.show()
         return torch.Tensor(img).unsqueeze(0)
+
+    def get_binimg_s2(self, rec):
+        """
+        Get a binary image of the scene.
+        shape (2,200,200) class number 2
+        """
+        egopose = self.nusc.get('ego_pose',
+                                self.nusc.get('sample_data', rec['data']['LIDAR_TOP'])['ego_pose_token'])
+        trans = -np.array(egopose['translation'])
+        rot = Quaternion(egopose['rotation']).inverse
+        img = np.zeros((2, self.nx[0], self.nx[1]))  # outC = 2
+        for tok in rec['anns']:
+            inst = self.nusc.get('sample_annotation', tok)
+            # add category for lyft
+            if inst['category_name'].split('.')[0] == 'vehicle':
+
+                box = Box(inst['translation'], inst['size'], Quaternion(inst['rotation']))
+                box.translate(trans)
+                box.rotate(rot)
+
+                pts = box.bottom_corners()[:2].T
+                pts = np.round(
+                    (pts - self.bx[:2] + self.dx[:2]/2.) / self.dx[:2]
+                    ).astype(np.int32)
+                pts[:, [1, 0]] = pts[:, [0, 1]]
+                # fillPoly takes pts in (y,x) format
+                cv2.fillPoly(img[0], [pts], 1.0)
+            elif inst['category_name'].split('.')[0] == 'human':
+
+                box = Box(inst['translation'], inst['size'], Quaternion(inst['rotation']))
+                box.translate(trans)
+                box.rotate(rot)
+
+                pts = box.bottom_corners()[:2].T
+                pts = np.round(
+                    (pts - self.bx[:2] + self.dx[:2]/2.) / self.dx[:2]
+                    ).astype(np.int32)
+                pts[:, [1, 0]] = pts[:, [0, 1]]
+                # fillPoly takes pts in (y,x) format
+                cv2.fillPoly(img[1], [pts], 1.0)
+
+        # import matplotlib.pyplot as plt
+        # plt.imshow(img[0], vmin=0, vmax=1, cmap='Purples')
+        # plt.show()
+        return torch.Tensor(img)
 
     def __str__(self):
         return f"""NuscData: {len(self)} samples. Split: {"train" if self.is_train else "val"}.
@@ -362,7 +411,10 @@ class SegmentationData(NuscData):
 
         cams = self.choose_cams()
         imgs, rots, trans, intrins, post_rots, post_trans = self.get_image_data(rec, cams)
-        binimg = self.get_binimg(rec)
+        if self.data_aug_conf['outC'] == 1:
+            binimg = self.get_binimg(rec)
+        elif self.data_aug_conf['outC'] == 2:
+            binimg = self.get_binimg_s2(rec)
 
         return imgs, rots, trans, intrins, post_rots, post_trans, binimg
 

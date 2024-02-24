@@ -15,10 +15,12 @@ train
 def train(version,
             dataroot='/data/nuscenes',
             weightsdir='./runs/weights',
-            pretrained_weights_path = './model525000.pt',
+            pretrained_weights_path = '',
             nepochs=10000,
             gpuid=1,
 
+
+            outC=1,
             H=900, W=1600,
             resize_lim=(0.193, 0.225),
             final_dim=(128, 352),
@@ -56,6 +58,8 @@ def train(version,
                     'cams': ['CAM_FRONT_LEFT', 'CAM_FRONT', 'CAM_FRONT_RIGHT',
                              'CAM_BACK_LEFT', 'CAM_BACK', 'CAM_BACK_RIGHT'],
                     'Ncams': ncams,
+                    'outC': outC,
+
                 }
     trainloader, valloader = compile_data(version, dataroot, data_aug_conf=data_aug_conf,
                                           grid_conf=grid_conf, bsz=bsz, nworkers=nworkers,
@@ -64,7 +68,7 @@ def train(version,
     device = torch.device('cpu') if gpuid < 0 else torch.device(f'cuda:{gpuid}')
 
     # tensor shape from (bsz, num, 3, H, W) to (bsz, outC, 200, 200)
-    model = compile_model(grid_conf, data_aug_conf, outC=1)
+    model = compile_model(grid_conf, data_aug_conf, outC=outC)
     model.to(device)
 
     opt = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
