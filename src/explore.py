@@ -399,9 +399,9 @@ def viz_model_preds(version,
                         plt.axis('off')
                         plt.annotate(cams[imgi].replace('_', ' '), (0.01, 0.92), xycoords='axes fraction', color='red')
 
-                    """
-                    plot output1
-                    """
+                    ############################
+                    # plot output1
+                    ############################
                     ax = plt.subplot(gs[0, 0])
                     ax.get_xaxis().set_ticks([])
                     ax.get_yaxis().set_ticks([])
@@ -415,7 +415,6 @@ def viz_model_preds(version,
                         mlines.Line2D([], [], color=(1.0, 0.0, 0.0), alpha=0.5, label='Road divider'),
                         mlines.Line2D([], [], color=(0.0, 0.0, 1.0), alpha=0.5, label='Lane divider')
                     ], loc=(0.01, 0.80))
-                    # removing dimensions of size 1 from the first dimension (indexed from 0) of the out tensor and plot
                     plt.imshow(out[si][0].squeeze(0), vmin=0, vmax=1, cmap='Purples')
 
                     # plot static map (improves visualization)
@@ -425,10 +424,9 @@ def viz_model_preds(version,
                     plt.ylim((0, out.shape[3]))
                     add_ego(bx, dx)
 
-                    """
-                    plot binimgs
-                    """
-                    # plot intersection over union
+                    ############################
+                    # plot binimgs
+                    ############################
                     ax2 = plt.subplot(gs[0, 1])
                     ax2.get_xaxis().set_ticks([])
                     ax2.get_yaxis().set_ticks([])
@@ -453,9 +451,9 @@ def viz_model_preds(version,
                     plt.ylim((0, binimgs.shape[3]))
                     add_ego(bx, dx)
 
-                    """
-                    plot output2
-                    """
+                    ############################
+                    # plot output2
+                    ############################
                     ax = plt.subplot(gs[0, 2])
                     ax.get_xaxis().set_ticks([])
                     ax.get_yaxis().set_ticks([])
