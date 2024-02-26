@@ -269,6 +269,47 @@ class NuscData(torch.utils.data.Dataset):
     #                    nsweeps=nsweeps, min_distance=2.2)
     #     return torch.Tensor(pts)[:3]  # x,y,z
 
+    def get_binmap(self, rec, nusc_maps):
+        egopose = self.nusc.get('ego_pose', self.nusc.get('sample_data', rec['data']['LIDAR_TOP'])['ego_pose_token'])
+
+        scene2map = {}
+        for rec_temp in self.nusc.scene:
+            log = self.nusc.get('log', rec_temp['log_token'])
+            scene2map[rec_temp['name']] = log['location']
+
+        map_name = scene2map[self.nusc.get('scene', rec['scene_token'])['name']]
+
+        rot = Quaternion(egopose['rotation']).rotation_matrix
+        rot = np.arctan2(rot[1, 0], rot[0, 0])
+        center = np.array([egopose['translation'][0], egopose['translation'][1], np.cos(rot), np.sin(rot)])
+
+        poly_names = ['road_segment', 'lane']
+        line_names = ['road_divider', 'lane_divider']
+        lmap = get_local_map(nusc_maps[map_name], center,
+                             50.0, poly_names, line_names)
+
+        # Delta X, Base X，Number X
+        dx, bx, _ = gen_dx_bx(self.grid_conf['xbound'], self.grid_conf['ybound'], self.grid_conf['zbound'])
+        dx, bx = dx[:2].numpy(), bx[:2].numpy()
+        filled_array = np.zeros((self.nx[0], self.nx[1]))
+
+        # Loop to fill polygons
+        for name in poly_names:
+            for la in lmap[name]:
+                # Convert vertex coordinates to grid coordinates
+                pts = ((la - bx) / dx).astype(int)
+                # Create a Path object for using the contains_points method
+                path = Path(pts)
+                # Generate grid coordinates
+                xx, yy = np.meshgrid(np.arange(self.nx[1]), np.arange(self.nx[0]))
+                grid_points = np.vstack((yy.ravel(), xx.ravel())).T
+                # Check if each point is inside the polygon
+                inside_polygon = path.contains_points(grid_points)
+                # Fill the points inside the polygon with 1
+                filled_array[grid_points[inside_polygon, 0], grid_points[inside_polygon, 1]] = 1
+
+        return filled_array
+
     def get_binimg(self, rec):
         """
         Get a binary image of the scene.
@@ -315,18 +356,18 @@ class NuscData(torch.utils.data.Dataset):
             inst = self.nusc.get('sample_annotation', tok)
             # add category for lyft
             if inst['category_name'].split('.')[0] == 'vehicle':
-
                 box = Box(inst['translation'], inst['size'], Quaternion(inst['rotation']))
                 box.translate(trans)
                 box.rotate(rot)
 
                 pts = box.bottom_corners()[:2].T
                 pts = np.round(
-                    (pts - self.bx[:2] + self.dx[:2]/2.) / self.dx[:2]
-                    ).astype(np.int32)
+                    (pts - self.bx[:2] + self.dx[:2] / 2.) / self.dx[:2]
+                ).astype(np.int32)
                 pts[:, [1, 0]] = pts[:, [0, 1]]
                 # fillPoly takes pts in (y,x) format
                 cv2.fillPoly(img[0], [pts], 1.0)
+            # add category such as: human, animal, etc.
             elif inst['category_name'].split('.')[0] == 'human':
 
                 box = Box(inst['translation'], inst['size'], Quaternion(inst['rotation']))
@@ -346,48 +387,53 @@ class NuscData(torch.utils.data.Dataset):
         # plt.show()
         return torch.Tensor(img)
 
-    def get_binmap(self, rec, nusc_maps):
-        egopose = self.nusc.get('ego_pose', self.nusc.get('sample_data', rec['data']['LIDAR_TOP'])['ego_pose_token'])
+    def get_binimg_s3(self, rec):
+        """
+        Get a binary image of the scene.
+        shape (3,200,200) class number 3
+        """
+        egopose = self.nusc.get('ego_pose',
+                                self.nusc.get('sample_data', rec['data']['LIDAR_TOP'])['ego_pose_token'])
+        trans = -np.array(egopose['translation'])
+        rot = Quaternion(egopose['rotation']).inverse
+        img = np.zeros((3, self.nx[0], self.nx[1]))  # outC = 3
+        for tok in rec['anns']:
+            inst = self.nusc.get('sample_annotation', tok)
+            # add category for lyft
+            if inst['category_name'].split('.')[0] == 'vehicle':
 
-        scene2map = {}
-        for rec_temp in self.nusc.scene:
-            log = self.nusc.get('log', rec_temp['log_token'])
-            scene2map[rec_temp['name']] = log['location']
+                box = Box(inst['translation'], inst['size'], Quaternion(inst['rotation']))
+                box.translate(trans)
+                box.rotate(rot)
 
-        map_name = scene2map[self.nusc.get('scene', rec['scene_token'])['name']]
+                pts = box.bottom_corners()[:2].T
+                pts = np.round(
+                    (pts - self.bx[:2] + self.dx[:2]/2.) / self.dx[:2]
+                    ).astype(np.int32)
+                pts[:, [1, 0]] = pts[:, [0, 1]]
+                # fillPoly takes pts in (y,x) format
+                cv2.fillPoly(img[0], [pts], 1.0)
+            # add category such as: human, animal, etc.
+            elif inst['category_name'].split('.')[0] == 'human':
 
-        rot = Quaternion(egopose['rotation']).rotation_matrix
-        rot = np.arctan2(rot[1, 0], rot[0, 0])
-        center = np.array([egopose['translation'][0], egopose['translation'][1], np.cos(rot), np.sin(rot)])
+                box = Box(inst['translation'], inst['size'], Quaternion(inst['rotation']))
+                box.translate(trans)
+                box.rotate(rot)
 
-        poly_names = ['road_segment', 'lane']
-        line_names = ['road_divider', 'lane_divider']
-        lmap = get_local_map(nusc_maps[map_name], center,
-                             50.0, poly_names, line_names)
+                pts = box.bottom_corners()[:2].T
+                pts = np.round(
+                    (pts - self.bx[:2] + self.dx[:2]/2.) / self.dx[:2]
+                    ).astype(np.int32)
+                pts[:, [1, 0]] = pts[:, [0, 1]]
+                # fillPoly takes pts in (y,x) format
+                cv2.fillPoly(img[1], [pts], 1.0)
+            # add road category
+            img[2] = self.get_binmap(rec, self.nusc_maps)
 
-        # Delta X, Base X，Number X
-        dx, bx, _ = gen_dx_bx(self.grid_conf['xbound'], self.grid_conf['ybound'], self.grid_conf['zbound'])
-        dx, bx = dx[:2].numpy(), bx[:2].numpy()
-        filled_array = np.zeros((self.nx[0], self.nx[1]))
-
-        # Loop to fill polygons
-        for name in poly_names:
-            for la in lmap[name]:
-                # Convert vertex coordinates to grid coordinates
-                pts = ((la - bx) / dx).astype(int)
-                # Create a Path object for using the contains_points method
-                path = Path(pts)
-                # Generate grid coordinates
-                xx, yy = np.meshgrid(np.arange(self.nx[1]), np.arange(self.nx[0]))
-                grid_points = np.vstack((yy.ravel(), xx.ravel())).T
-                # Check if each point is inside the polygon
-                inside_polygon = path.contains_points(grid_points)
-                # Fill the points inside the polygon with 1
-                filled_array[grid_points[inside_polygon, 0], grid_points[inside_polygon, 1]] = 1
-        # Convert filled_array to a torch Tensor and add a batch dimension
-        filled_array = torch.Tensor(filled_array).unsqueeze(0)
-
-        return filled_array
+        # import matplotlib.pyplot as plt
+        # plt.imshow(img[0], vmin=0, vmax=1, cmap='Purples')
+        # plt.show()
+        return torch.Tensor(img)
 
     def __str__(self):
         return f"""NuscData: {len(self)} samples. Split: {"train" if self.is_train else "val"}.
@@ -430,6 +476,8 @@ class SegmentationData(NuscData):
             binimg = self.get_binimg(rec)
         elif self.data_aug_conf['outC'] == 2:
             binimg = self.get_binimg_s2(rec)
+        elif self.data_aug_conf['outC'] == 3:
+            binimg = self.get_binimg_s3(rec)
 
         return imgs, rots, trans, intrins, post_rots, post_trans, binimg
 
