@@ -3,17 +3,17 @@ import torchvision
 import os
 import numpy as np
 import cv2
-from functools import reduce
+import matplotlib as mpl
+from matplotlib.path import Path
 from nuscenes.nuscenes import NuScenes
-from nuscenes.utils.data_classes import LidarPointCloud
-from nuscenes.utils.geometry_utils import transform_matrix
 from nuscenes.utils.splits import create_splits_scenes
 from nuscenes.utils.data_classes import Box
-from .public import gen_dx_bx, get_rot
+from .public import gen_dx_bx, get_rot, get_local_map
 from PIL import Image
 from pyquaternion import Quaternion
 from glob import glob
 
+mpl.use('Agg')
 
 """
 Nuscdata
@@ -112,11 +112,12 @@ normalize_img = torchvision.transforms.Compose((
 
 
 class NuscData(torch.utils.data.Dataset):
-    def __init__(self, nusc, is_train, data_aug_conf, grid_conf):
+    def __init__(self, nusc, is_train, data_aug_conf, grid_conf, nusc_maps):
         self.nusc = nusc
         self.is_train = is_train
         self.data_aug_conf = data_aug_conf
         self.grid_conf = grid_conf
+        self.nusc_maps = nusc_maps
 
         self.scenes = self.get_scenes()
         self.ixes = self.prepro()
@@ -184,7 +185,6 @@ class NuscData(torch.utils.data.Dataset):
             for rec in self.nusc.sample_data:
                 if rec['channel'] == 'LIDAR_TOP' or (rec['is_key_frame'] and rec['channel'] in self.data_aug_conf['cams']):
                     rec['filename'] = info[rec['filename']]
-
 
     def choose_cams(self):
         if self.is_train and self.data_aug_conf['Ncams'] < len(self.data_aug_conf['cams']):
@@ -346,6 +346,49 @@ class NuscData(torch.utils.data.Dataset):
         # plt.show()
         return torch.Tensor(img)
 
+    def get_binmap(self, rec, nusc_maps):
+        egopose = self.nusc.get('ego_pose', self.nusc.get('sample_data', rec['data']['LIDAR_TOP'])['ego_pose_token'])
+
+        scene2map = {}
+        for rec_temp in self.nusc.scene:
+            log = self.nusc.get('log', rec_temp['log_token'])
+            scene2map[rec_temp['name']] = log['location']
+
+        map_name = scene2map[self.nusc.get('scene', rec['scene_token'])['name']]
+
+        rot = Quaternion(egopose['rotation']).rotation_matrix
+        rot = np.arctan2(rot[1, 0], rot[0, 0])
+        center = np.array([egopose['translation'][0], egopose['translation'][1], np.cos(rot), np.sin(rot)])
+
+        poly_names = ['road_segment', 'lane']
+        line_names = ['road_divider', 'lane_divider']
+        lmap = get_local_map(nusc_maps[map_name], center,
+                             50.0, poly_names, line_names)
+
+        # Delta X, Base X，Number X
+        dx, bx, _ = gen_dx_bx(self.grid_conf['xbound'], self.grid_conf['ybound'], self.grid_conf['zbound'])
+        dx, bx = dx[:2].numpy(), bx[:2].numpy()
+        filled_array = np.zeros((self.nx[0], self.nx[1]))
+
+        # Loop to fill polygons
+        for name in poly_names:
+            for la in lmap[name]:
+                # Convert vertex coordinates to grid coordinates
+                pts = ((la - bx) / dx).astype(int)
+                # Create a Path object for using the contains_points method
+                path = Path(pts)
+                # Generate grid coordinates
+                xx, yy = np.meshgrid(np.arange(self.nx[1]), np.arange(self.nx[0]))
+                grid_points = np.vstack((yy.ravel(), xx.ravel())).T
+                # Check if each point is inside the polygon
+                inside_polygon = path.contains_points(grid_points)
+                # Fill the points inside the polygon with 1
+                filled_array[grid_points[inside_polygon, 0], grid_points[inside_polygon, 1]] = 1
+        # Convert filled_array to a torch Tensor and add a batch dimension
+        filled_array = torch.Tensor(filled_array).unsqueeze(0)
+
+        return filled_array
+
     def __str__(self):
         return f"""NuscData: {len(self)} samples. Split: {"train" if self.is_train else "val"}.
                    Augmentation Conf: {self.data_aug_conf}"""
@@ -400,7 +443,7 @@ def worker_rnd_init(x):
     np.random.seed(13 + x)
 
 
-def compile_data(version, dataroot, data_aug_conf, grid_conf, bsz,
+def compile_data(version, dataroot, nusc_maps, data_aug_conf, grid_conf, bsz,
                  nworkers, parser_name):
     nusc = NuScenes(version='v1.0-{}'.format(version),
                     dataroot=os.path.join(dataroot, version),
@@ -409,9 +452,9 @@ def compile_data(version, dataroot, data_aug_conf, grid_conf, bsz,
         # 'vizdata': VizData,
         'segmentationdata': SegmentationData,
     }[parser_name]
-    traindata = parser(nusc, is_train=True, data_aug_conf=data_aug_conf,
+    traindata = parser(nusc, is_train=True, nusc_maps=nusc_maps, data_aug_conf=data_aug_conf,
                          grid_conf=grid_conf)
-    valdata = parser(nusc, is_train=False, data_aug_conf=data_aug_conf,
+    valdata = parser(nusc, is_train=False, nusc_maps=nusc_maps, data_aug_conf=data_aug_conf,
                        grid_conf=grid_conf)
 
     trainloader = torch.utils.data.DataLoader(traindata, batch_size=bsz,

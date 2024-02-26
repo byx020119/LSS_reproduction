@@ -5,7 +5,7 @@ from tensorboardX import SummaryWriter
 from time import time
 from .data import compile_data
 from .models import compile_model
-from .public import SimpleLoss, get_val_info, get_batch_iou
+from .public import SimpleLoss, get_val_info, get_batch_iou, get_nusc_maps
 
 """
 train
@@ -16,6 +16,7 @@ def train(version,
             dataroot='/data/nuscenes',
             weightsdir='./runs/weights',
             pretrained_weights_path = '',
+            map_folder='/data/nuscenes/mini',
             nepochs=10000,
             gpuid=1,
 
@@ -61,7 +62,8 @@ def train(version,
                     'outC': outC,
 
                 }
-    trainloader, valloader = compile_data(version, dataroot, data_aug_conf=data_aug_conf,
+    nusc_maps = get_nusc_maps(map_folder)
+    trainloader, valloader = compile_data(version, dataroot, nusc_maps=nusc_maps, data_aug_conf=data_aug_conf,
                                           grid_conf=grid_conf, bsz=bsz, nworkers=nworkers,
                                           parser_name='segmentationdata')
 

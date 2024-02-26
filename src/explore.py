@@ -8,10 +8,9 @@ import matplotlib.patches as mpatches
 import matplotlib.lines as mlines
 from pyquaternion import Quaternion
 from PIL import Image
-from nuscenes.map_expansion.map_api import NuScenesMap
 from .data import compile_data
 from .models import compile_model
-from .public import SimpleLoss, get_val_info, gen_dx_bx, get_rot
+from .public import SimpleLoss, get_val_info, gen_dx_bx, get_local_map, get_nusc_maps
 
 """
 eval_model_iou
@@ -82,17 +81,6 @@ viz_model_preds
 """
 
 
-def get_nusc_maps(map_folder):
-    nusc_maps = {map_name: NuScenesMap(dataroot=map_folder,
-                map_name=map_name) for map_name in [
-                    "singapore-hollandvillage",
-                    "singapore-queenstown",
-                    "boston-seaport",
-                    "singapore-onenorth",
-                ]}
-    return nusc_maps
-
-
 class NormalizeInverse(torchvision.transforms.Normalize):
     #  https://discuss.pytorch.org/t/simple-way-to-inverse-transform-normalization/4821/8
     def __init__(self, mean, std):
@@ -111,59 +99,6 @@ denormalize_img = torchvision.transforms.Compose((
                          std=[0.229, 0.224, 0.225]),
         torchvision.transforms.ToPILImage(),
     ))
-
-
-def get_local_map(nmap, center, stretch, layer_names, line_names):
-    # need to get the map here...
-    box_coords = (
-        center[0] - stretch,
-        center[1] - stretch,
-        center[0] + stretch,
-        center[1] + stretch,
-    )
-
-    polys = {}
-
-    # polygons
-    records_in_patch = nmap.get_records_in_patch(box_coords,
-                                                 layer_names=layer_names,
-                                                 mode='intersect')
-    for layer_name in layer_names:
-        polys[layer_name] = []
-        for token in records_in_patch[layer_name]:
-            poly_record = nmap.get(layer_name, token)
-            if layer_name == 'drivable_area':
-                polygon_tokens = poly_record['polygon_tokens']
-            else:
-                polygon_tokens = [poly_record['polygon_token']]
-
-            for polygon_token in polygon_tokens:
-                polygon = nmap.extract_polygon(polygon_token)
-                polys[layer_name].append(np.array(polygon.exterior.xy).T)
-
-    # lines
-    for layer_name in line_names:
-        polys[layer_name] = []
-        for record in getattr(nmap, layer_name):
-            token = record['token']
-
-            line = nmap.extract_line(record['line_token'])
-            if line.is_empty:  # Skip lines without nodes
-                continue
-            xs, ys = line.xy
-
-            polys[layer_name].append(
-                np.array([xs, ys]).T
-                )
-
-    # convert to local coordinates in place
-    rot = get_rot(np.arctan2(center[3], center[2])).T
-    for layer_name in polys:
-        for rowi in range(len(polys[layer_name])):
-            polys[layer_name][rowi] -= center[:2]
-            polys[layer_name][rowi] = np.dot(polys[layer_name][rowi], rot)
-
-    return polys
 
 
 def plot_nusc_map(rec, nusc_maps, nusc, scene2map, dx, bx):
@@ -247,11 +182,12 @@ def viz_model_preds(version,
                     'Ncams': 5,
                     'outC': outC,
                 }
-    trainloader, valloader = compile_data(version, dataroot, data_aug_conf=data_aug_conf,
+    nusc_maps = get_nusc_maps(map_folder)
+
+    trainloader, valloader = compile_data(version, dataroot, nusc_maps=nusc_maps, data_aug_conf=data_aug_conf,
                                           grid_conf=grid_conf, bsz=bsz, nworkers=nworkers,
                                           parser_name='segmentationdata')
     loader = trainloader if viz_train else valloader
-    nusc_maps = get_nusc_maps(map_folder)
 
     device = torch.device('cpu') if gpuid < 0 else torch.device(f'cuda:{gpuid}')
 
@@ -267,7 +203,6 @@ def viz_model_preds(version,
     for rec in loader.dataset.nusc.scene:
         log = loader.dataset.nusc.get('log', rec['log_token'])
         scene2map[rec['name']] = log['location']
-
 
     val = 0.01
     fH, fW = final_dim
@@ -303,7 +238,10 @@ def viz_model_preds(version,
                         plt.imshow(showimg)
                         plt.axis('off')
                         plt.annotate(cams[imgi].replace('_', ' '), (0.01, 0.92), xycoords='axes fraction', color='red')
+
+                    ############################
                     # plot output
+                    ############################
                     ax = plt.subplot(gs[0, 0])
                     ax.get_xaxis().set_ticks([])
                     ax.get_yaxis().set_ticks([])
@@ -326,7 +264,9 @@ def viz_model_preds(version,
                     plt.ylim((0, out.shape[3]))
                     add_ego(bx, dx)
 
+                    ############################
                     # plot ground truth
+                    ############################
                     ax1 = plt.subplot(gs[0, 1])
                     ax1.get_xaxis().set_ticks([])
                     ax1.get_yaxis().set_ticks([])
@@ -348,14 +288,17 @@ def viz_model_preds(version,
                     plt.ylim((0, binimgs.shape[3]))
                     add_ego(bx, dx)
 
+                    ############################
                     # plot intersection over union
+                    ############################
                     non_zero_elements = torch.where((out != 0) & (binimgs != 0), out, torch.tensor(0.))
                     ax2 = plt.subplot(gs[0, 2])
                     ax2.get_xaxis().set_ticks([])
                     ax2.get_yaxis().set_ticks([])
                     plt.setp(ax2.spines.values(), color='b', linewidth=2)
                     plt.legend(handles=[
-                        mpatches.Patch(color=(138./255, 43./255, 226./255, 1.0), label='Iou Area (intersection over union)'),
+                        mpatches.Patch(color=(138./255, 43./255, 226./255, 1.0),
+                                       label='Iou Area (intersection over union)'),
                         # for visualization purposes only
                         mpatches.Patch(color=(1.0, 0.0, 0.0), label='Ego Vehicle'),
                         mpatches.Patch(color=(0.31, 1.00, 0.50, 0.5), label='Map'),
@@ -420,6 +363,7 @@ def viz_model_preds(version,
                     # plot static map (improves visualization)
                     rec = loader.dataset.ixes[counter]
                     plot_nusc_map(rec, nusc_maps, loader.dataset.nusc, scene2map, dx, bx)
+                    temp = out.shape[3]
                     plt.xlim((out.shape[3], 0))
                     plt.ylim((0, out.shape[3]))
                     add_ego(bx, dx)
