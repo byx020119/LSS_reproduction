@@ -382,9 +382,6 @@ class NuscData(torch.utils.data.Dataset):
                 # fillPoly takes pts in (y,x) format
                 cv2.fillPoly(img[1], [pts], 1.0)
 
-        # import matplotlib.pyplot as plt
-        # plt.imshow(img[0], vmin=0, vmax=1, cmap='Purples')
-        # plt.show()
         return torch.Tensor(img)
 
     def get_binimg_s3(self, rec):
@@ -430,9 +427,6 @@ class NuscData(torch.utils.data.Dataset):
             # add road category
             img[2] = self.get_binmap(rec, self.nusc_maps)
 
-        # import matplotlib.pyplot as plt
-        # plt.imshow(img[0], vmin=0, vmax=1, cmap='Purples')
-        # plt.show()
         return torch.Tensor(img)
 
     def __str__(self):

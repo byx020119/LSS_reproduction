@@ -20,6 +20,7 @@ eval_model_iou
 def eval_model_iou(version,
                 modelf,
                 dataroot='/data/nuscenes',
+                map_folder='/data/nuscenes/mini',
                 gpuid=1,
 
                 outC=1, H=900, W=1600,
@@ -57,8 +58,8 @@ def eval_model_iou(version,
                     'Ncams': 5,
                     'outC': outC,
                 }
-
-    trainloader, valloader = compile_data(version, dataroot, data_aug_conf=data_aug_conf,
+    nusc_maps = get_nusc_maps(map_folder)
+    trainloader, valloader = compile_data(version, dataroot, nusc_maps=nusc_maps, data_aug_conf=data_aug_conf,
                                           grid_conf=grid_conf, bsz=bsz, nworkers=nworkers,
                                           parser_name='segmentationdata')
 
@@ -431,7 +432,108 @@ def viz_model_preds(version,
                     plt.savefig(imname)
 
                     counter += 1
+            """
+            when outC=3, out.shape=(bsz, 3, 200, 200), save pictures
+            """
+            if outC == 3:
+                for si in range(imgs.shape[0]):
+                    plt.clf()
+                    for imgi, img in enumerate(imgs[si]):
+                        ax = plt.subplot(gs[1 + imgi // 3, imgi % 3])
+                        showimg = denormalize_img(img)
+                        # flip the bottom images
+                        if imgi > 2:
+                            showimg = showimg.transpose(Image.FLIP_LEFT_RIGHT)
+                        plt.imshow(showimg)
+                        plt.axis('off')
+                        plt.annotate(cams[imgi].replace('_', ' '), (0.01, 0.92), xycoords='axes fraction', color='red')
 
+                    ############################
+                    # plot output1
+                    ############################
+                    ax = plt.subplot(gs[0, 0])
+                    ax.get_xaxis().set_ticks([])
+                    ax.get_yaxis().set_ticks([])
+                    plt.setp(ax.spines.values(), color='b', linewidth=2)
+                    plt.legend(handles=[
+                        mpatches.Patch(color=(138. / 255, 43. / 255, 226. / 255, 1.0),
+                                       label='Vehicle Segmentation (predict)'),
+                        # for visualization purposes only
+                        mpatches.Patch(color=(1.0, 0.0, 0.0), label='Ego Vehicle'),
+                        mpatches.Patch(color=(0.31, 1.00, 0.50, 0.5), label='Map'),
+                        mlines.Line2D([], [], color=(1.0, 0.0, 0.0), alpha=0.5, label='Road divider'),
+                        mlines.Line2D([], [], color=(0.0, 0.0, 1.0), alpha=0.5, label='Lane divider')
+                    ], loc=(0.01, 0.80))
+                    plt.imshow(out[si][0].squeeze(0), vmin=0, vmax=1, cmap='Purples')
+
+                    # plot static map (improves visualization)
+                    rec = loader.dataset.ixes[counter]
+                    plot_nusc_map(rec, nusc_maps, loader.dataset.nusc, scene2map, dx, bx)
+                    temp = out.shape[3]
+                    plt.xlim((out.shape[3], 0))
+                    plt.ylim((0, out.shape[3]))
+                    add_ego(bx, dx)
+
+                    ############################
+                    # plot output2
+                    ############################
+                    ax2 = plt.subplot(gs[0, 1])
+                    ax2.get_xaxis().set_ticks([])
+                    ax2.get_yaxis().set_ticks([])
+                    plt.setp(ax2.spines.values(), color='b', linewidth=2)
+                    plt.legend(handles=[
+                        mpatches.Patch(color=(138. / 255, 43. / 255, 226. / 255, 1.0),
+                                       label='human Segmentation (predict)'),
+                        mpatches.Patch(color=(1.0, 0.0, 0.0), label='Ego Vehicle'),
+                        mpatches.Patch(color=(0.31, 1.00, 0.50, 0.5), label='Map'),
+                        mlines.Line2D([], [], color=(1.0, 0.0, 0.0), alpha=0.5, label='Road divider'),
+                        mlines.Line2D([], [], color=(0.0, 0.0, 1.0), alpha=0.5, label='Lane divider')
+                    ], loc=(0.01, 0.80))
+                    plt.imshow(out[si][1].squeeze(0), vmin=0, vmax=1, cmap='Purples')
+
+                    # plot static map (improves visualization)
+                    rec = loader.dataset.ixes[counter]
+                    plot_nusc_map(rec, nusc_maps, loader.dataset.nusc, scene2map, dx, bx)
+                    plt.xlim((out.shape[3], 0))
+                    plt.ylim((0, out.shape[3]))
+                    add_ego(bx, dx)
+
+                    ############################
+                    # plot output3
+                    ############################
+                    ax = plt.subplot(gs[0, 2])
+                    ax.get_xaxis().set_ticks([])
+                    ax.get_yaxis().set_ticks([])
+                    plt.setp(ax.spines.values(), color='b', linewidth=2)
+                    plt.legend(handles=[
+                        mpatches.Patch(color=(138. / 255, 43. / 255, 226. / 255, 1.0),
+                                       label='road Segmentation (predict)'),
+                        # for visualization purposes only
+                        mpatches.Patch(color=(1.0, 0.0, 0.0), label='Ego Vehicle'),
+                        mpatches.Patch(color=(0.31, 1.00, 0.50, 0.5), label='Map'),
+                        mlines.Line2D([], [], color=(1.0, 0.0, 0.0), alpha=0.5, label='Road divider'),
+                        mlines.Line2D([], [], color=(0.0, 0.0, 1.0), alpha=0.5, label='Lane divider')
+                    ], loc=(0.01, 0.80))
+                    plt.imshow(out[si][2].squeeze(0), vmin=0, vmax=1, cmap='Purples')
+
+                    # plot static map (improves visualization)
+                    rec = loader.dataset.ixes[counter]
+                    plot_nusc_map(rec, nusc_maps, loader.dataset.nusc, scene2map, dx, bx)
+                    plt.xlim((out.shape[3], 0))
+                    plt.ylim((0, out.shape[3]))
+                    add_ego(bx, dx)
+
+                    # # show the plot
+                    # plt.show()
+
+                    save_dir = 'runs/imgs'
+                    os.makedirs(save_dir, exist_ok=True)
+
+                    imname = os.path.join(save_dir, f'eval{batchi:06}_{si:03}.jpg')
+                    print('saving', imname)
+                    plt.savefig(imname)
+
+                    counter += 1
 
 
 
