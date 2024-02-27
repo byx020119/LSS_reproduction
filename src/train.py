@@ -116,12 +116,12 @@ def train(version,
                 if outC == 1:
                     writer.add_scalar('train/iou', iou_list[0], counter)
                 elif outC == 2:
-                    writer.add_scalar('train/iou_vehicle', iou_list[0], counter)
-                    writer.add_scalar('train/iou_human', iou_list[1], counter)
+                    writer.add_scalar('train/iou_1', iou_list[0], counter)  # default car
+                    writer.add_scalar('train/iou_2', iou_list[1], counter)  # default human
                 elif outC == 3:
-                    writer.add_scalar('train/iou_vehicle', iou_list[0], counter)
-                    writer.add_scalar('train/iou_human', iou_list[1], counter)
-                    writer.add_scalar('train/iou_road', iou_list[2], counter)
+                    writer.add_scalar('train/iou_1', iou_list[0], counter)  # default car
+                    writer.add_scalar('train/iou_2', iou_list[1], counter)  # default human
+                    writer.add_scalar('train/iou_3', iou_list[2], counter)  # default road
                 writer.add_scalar('train/epoch', epoch, counter)
                 writer.add_scalar('train/step_time', t1 - t0, counter)
 
@@ -132,12 +132,13 @@ def train(version,
                 if outC == 1:
                     writer.add_scalar('val/iou', val_info['iou'][0], counter)
                 elif outC == 2:
-                    writer.add_scalar('val/iou_vehicle', val_info['iou'][0], counter)
-                    writer.add_scalar('val/iou_human', val_info['iou'][1], counter)
+                    writer.add_scalar('val/iou_1', val_info['iou'][0], counter)
+                    writer.add_scalar('val/iou_2', val_info['iou'][1], counter)
                 elif outC == 3:
-                    writer.add_scalar('val/iou_vehicle', val_info['iou'][0], counter)
-                    writer.add_scalar('val/iou_human', val_info['iou'][1], counter)
-                    writer.add_scalar('val/iou_road', val_info['iou'][2], counter)
+                    writer.add_scalar('val/iou_1', val_info['iou'][0], counter)
+                    writer.add_scalar('val/iou_2', val_info['iou'][1], counter)
+                    writer.add_scalar('val/iou_3', val_info['iou'][2], counter)
+
             if counter % val_step == 0:
                 model.eval()
                 os.makedirs(weightsdir, exist_ok=True)

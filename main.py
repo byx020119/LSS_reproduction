@@ -8,6 +8,7 @@ viz_model_preds mini --modelf=./model525000.pt --dataroot=../dataset/nuScenes --
 train mini  --dataroot=../dataset/nuScenes  --pretrained_weights_path=./runs/weights/model525000 --map_folder=../dataset/nuScenes/mini --outC=1 --gpuid=0
 
 annotations: outC=class number
+    (default)
     outC=1:vehicle
     outC=2:vehicle and human
     outC=3:vehicle, human and road
