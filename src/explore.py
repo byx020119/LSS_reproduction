@@ -73,7 +73,7 @@ def eval_model_iou(version,
     loss_fn = SimpleLoss(1.0).cuda(gpuid)
 
     model.eval()
-    val_info = get_val_info(model, valloader, loss_fn, device)
+    val_info = get_val_info(model, valloader, loss_fn, device, outC=outC)
     print(val_info)
 
 

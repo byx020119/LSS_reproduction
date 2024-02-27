@@ -29,19 +29,28 @@ class SimpleLoss(torch.nn.Module):
 def get_batch_iou(preds, binimgs):
     """Assumes preds has NOT been sigmoided yet
     """
+    outC = preds.shape[1]
     with torch.no_grad():
-        pred = (preds > 0)
-        tgt = binimgs.bool()
-        intersect = (pred & tgt).sum().float().item()
-        union = (pred | tgt).sum().float().item()
-    return intersect, union, intersect / union if (union > 0) else 1.0
+        if outC == 1:
+            pred = (preds > 0)
+            tgt = binimgs.bool()
+            intersect = (pred & tgt).sum().float().item()
+            union = (pred | tgt).sum().float().item()
+        elif outC == 2:
+            pred = (preds > 0)
+            tgt = binimgs.bool()
+            intersect = [(pred & tgt)[:, i:i+1, :, :].sum().float().item() for i in range(2)]
+            union = [(pred | tgt)[:, i:i+1, :, :].sum().float().item() for i in range(2)]
+            iou_list = [intersect[i] / union[i] if union[i] > 0 else 1 for i in range(2)]
+    return intersect, union, iou_list
 
 
-def get_val_info(model, valloader, loss_fn, device, use_tqdm=False):
+def get_val_info(model, valloader, loss_fn, device, outC, use_tqdm=False):
     model.eval()
     total_loss = 0.0
-    total_intersect = 0.0
-    total_union = 0
+    total_intersect = [0]*outC
+    total_union = [0]*outC
+    iou_list = []
     print('running eval...')
     loader = tqdm(valloader) if use_tqdm else valloader
     with torch.no_grad():
@@ -57,13 +66,15 @@ def get_val_info(model, valloader, loss_fn, device, use_tqdm=False):
 
             # iou
             intersect, union, _ = get_batch_iou(preds, binimgs)
-            total_intersect += intersect
-            total_union += union
-
+            for i in range(preds.shape[1]):
+                total_intersect[i] += intersect[i]
+                total_union[i] += union[i]
+    for i in range(preds.shape[1]):
+        iou_list.append(total_intersect[i] / total_union[i])
     model.train()
     return {
             'loss': total_loss / len(valloader.dataset),
-            'iou': total_intersect / total_union,
+            'iou': iou_list,
             }
 
 

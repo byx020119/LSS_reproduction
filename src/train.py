@@ -112,17 +112,32 @@ def train(version,
                 writer.add_scalar('train/loss', loss, counter)
 
             if counter % 50 == 0:
-                _, _, iou = get_batch_iou(preds, binimgs)
-                writer.add_scalar('train/iou', iou, counter)
+                _, _, iou_list = get_batch_iou(preds, binimgs)
+                if outC == 1:
+                    writer.add_scalar('train/iou', iou_list[0], counter)
+                elif outC == 2:
+                    writer.add_scalar('train/iou_vehicle', iou_list[0], counter)
+                    writer.add_scalar('train/iou_human', iou_list[1], counter)
+                elif outC == 3:
+                    writer.add_scalar('train/iou_vehicle', iou_list[0], counter)
+                    writer.add_scalar('train/iou_human', iou_list[1], counter)
+                    writer.add_scalar('train/iou_road', iou_list[2], counter)
                 writer.add_scalar('train/epoch', epoch, counter)
                 writer.add_scalar('train/step_time', t1 - t0, counter)
 
             if counter % val_step == 0:
-                val_info = get_val_info(model, valloader, loss_fn, device)
+                val_info = get_val_info(model, valloader, loss_fn, device, outC)
                 print('VAL', val_info)
                 writer.add_scalar('val/loss', val_info['loss'], counter)
-                writer.add_scalar('val/iou', val_info['iou'], counter)
-
+                if outC == 1:
+                    writer.add_scalar('val/iou', val_info['iou'][0], counter)
+                elif outC == 2:
+                    writer.add_scalar('val/iou_vehicle', val_info['iou'][0], counter)
+                    writer.add_scalar('val/iou_human', val_info['iou'][1], counter)
+                elif outC == 3:
+                    writer.add_scalar('val/iou_vehicle', val_info['iou'][0], counter)
+                    writer.add_scalar('val/iou_human', val_info['iou'][1], counter)
+                    writer.add_scalar('val/iou_road', val_info['iou'][2], counter)
             if counter % val_step == 0:
                 model.eval()
                 os.makedirs(weightsdir, exist_ok=True)
