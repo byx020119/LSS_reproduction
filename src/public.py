@@ -29,19 +29,12 @@ class SimpleLoss(torch.nn.Module):
 def get_batch_iou(preds, binimgs):
     """Assumes preds has NOT been sigmoided yet
     """
-    outC = preds.shape[1]
     with torch.no_grad():
-        if outC == 1:
-            pred = (preds > 0)
-            tgt = binimgs.bool()
-            intersect = (pred & tgt).sum().float().item()
-            union = (pred | tgt).sum().float().item()
-        elif outC == 2:
-            pred = (preds > 0)
-            tgt = binimgs.bool()
-            intersect = [(pred & tgt)[:, i:i+1, :, :].sum().float().item() for i in range(2)]
-            union = [(pred | tgt)[:, i:i+1, :, :].sum().float().item() for i in range(2)]
-            iou_list = [intersect[i] / union[i] if union[i] > 0 else 1 for i in range(2)]
+        pred = (preds > 0)
+        tgt = binimgs.bool()
+        intersect = [(pred & tgt)[:, i:i+1, :, :].sum().float().item() for i in range(preds.shape[1])]
+        union = [(pred | tgt)[:, i:i+1, :, :].sum().float().item() for i in range(preds.shape[1])]
+        iou_list = [intersect[i] / union[i] if union[i] > 0 else 1 for i in range(preds.shape[1])]
     return intersect, union, iou_list
 
 
