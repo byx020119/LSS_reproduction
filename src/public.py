@@ -38,14 +38,14 @@ def get_batch_iou(preds, binimgs):
     return intersect, union, iou_list
 
 
-def get_val_info(model, valloader, loss_fn, device, outC, use_tqdm=False):
+def get_val_info(model, valloader, loss_fn, device, outC, use_tqdm=True):
     model.eval()
     total_loss = 0.0
     total_intersect = [0]*outC
     total_union = [0]*outC
     iou_list = []
     print('running eval...')
-    loader = tqdm(valloader) if use_tqdm else valloader
+    loader = tqdm.tqdm(valloader) if use_tqdm else valloader
     with torch.no_grad():
         for batch in loader:
             allimgs, rots, trans, intrins, post_rots, post_trans, binimgs = batch
