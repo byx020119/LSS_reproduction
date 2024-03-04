@@ -10,8 +10,8 @@ train mini  --dataroot=../dataset/nuScenes  --pretrained_weights_path=./runs/wei
 annotations: outC=class number
     (default)
     outC=1:vehicle
-    outC=2:vehicle and human
-    outC=3:vehicle, human and road
+    outC=2:vehicle and road
+    outC=3:vehicle, divider and road
 """
 
 

@@ -310,6 +310,49 @@ class NuscData(torch.utils.data.Dataset):
 
         return filled_array
 
+    def get_bindivider(self, rec, nusc_maps):
+        egopose = self.nusc.get('ego_pose', self.nusc.get('sample_data', rec['data']['LIDAR_TOP'])['ego_pose_token'])
+
+        scene2map = {}
+        for rec_temp in self.nusc.scene:
+            log = self.nusc.get('log', rec_temp['log_token'])
+            scene2map[rec_temp['name']] = log['location']
+
+        map_name = scene2map[self.nusc.get('scene', rec['scene_token'])['name']]
+
+        rot = Quaternion(egopose['rotation']).rotation_matrix
+        rot = np.arctan2(rot[1, 0], rot[0, 0])
+        center = np.array([egopose['translation'][0], egopose['translation'][1], np.cos(rot), np.sin(rot)])
+
+        poly_names = ['road_segment', 'lane']
+        line_names = ['road_divider', 'lane_divider']
+        lmap = get_local_map(nusc_maps[map_name], center,
+                             50.0, poly_names, line_names)
+
+        # Delta X, Base X，Number X
+        dx, bx, _ = gen_dx_bx(self.grid_conf['xbound'], self.grid_conf['ybound'], self.grid_conf['zbound'])
+        dx, bx = dx[:2].numpy(), bx[:2].numpy()
+        filled_array = np.zeros((self.nx[0], self.nx[1]))
+
+        # Loop to fill polygons
+        for name in line_names:
+            for la in lmap[name]:
+                pts = (la - bx) / dx
+                # Interpolate between every two consecutive points to get all points along the line
+                for i in range(len(pts) - 1):
+                    start_point = (int(pts[i, 1]), int(pts[i, 0]))
+                    end_point = (int(pts[i + 1, 1]), int(pts[i + 1, 0]))
+
+                    # Interpolate between the starting and ending points to get all points along the line
+                    x_values = np.linspace(start_point[0], end_point[0], num=100)
+                    y_values = np.linspace(start_point[1], end_point[1], num=100)
+
+                    # Map all points along the line onto filled_array and set the filled parts to 1
+                    for x, y in zip(x_values, y_values):
+                        if 0 <= x < 200 and 0 <= y < 200:
+                            filled_array[int(y), int(x)] = 1
+        return filled_array
+
     def get_binimg(self, rec):
         """
         Get a binary image of the scene.
@@ -412,20 +455,8 @@ class NuscData(torch.utils.data.Dataset):
                 pts[:, [1, 0]] = pts[:, [0, 1]]
                 # fillPoly takes pts in (y,x) format
                 cv2.fillPoly(img[0], [pts], 1.0)
-            # add category such as: human, animal, etc.
-            elif inst['category_name'].split('.')[0] == 'human':
-
-                box = Box(inst['translation'], inst['size'], Quaternion(inst['rotation']))
-                box.translate(trans)
-                box.rotate(rot)
-
-                pts = box.bottom_corners()[:2].T
-                pts = np.round(
-                    (pts - self.bx[:2] + self.dx[:2]/2.) / self.dx[:2]
-                    ).astype(np.int32)
-                pts[:, [1, 0]] = pts[:, [0, 1]]
-                # fillPoly takes pts in (y,x) format
-                cv2.fillPoly(img[1], [pts], 1.0)
+            # add divider category
+            img[1] = self.get_bindivider(rec, self.nusc_maps)
             # add road category
             img[2] = self.get_binmap(rec, self.nusc_maps)
 
