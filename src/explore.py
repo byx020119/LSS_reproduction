@@ -379,15 +379,15 @@ def viz_model_preds(version,
                     plt.legend(handles=[
                         mpatches.Patch(color=(138. / 255, 43. / 255, 226. / 255, 1.0),
                                        label='Vehicle Segmentation (binimg)'),
-                        mpatches.Patch(color=(1, 128. / 255, 0, 1.0),
-                                       label='human Segmentation (binimg)'),
+                        # mpatches.Patch(color=(1, 128. / 255, 0, 1.0),
+                        #                label='human Segmentation (binimg)'),
                         mpatches.Patch(color=(1.0, 0.0, 0.0), label='Ego Vehicle'),
                         mpatches.Patch(color=(0.31, 1.00, 0.50, 0.5), label='Map'),
                         mlines.Line2D([], [], color=(1.0, 0.0, 0.0), alpha=0.5, label='Road divider'),
                         mlines.Line2D([], [], color=(0.0, 0.0, 1.0), alpha=0.5, label='Lane divider')
                     ], loc=(0.01, 0.80))
                     plt.imshow(binimgs[si][0].squeeze(0), vmin=0, vmax=1, cmap='Purples')
-                    plt.imshow(binimgs[si][1].squeeze(0), alpha=0.5, vmin=0, vmax=1, cmap='Oranges')
+                    # plt.imshow(binimgs[si][1].squeeze(0), alpha=0.5, vmin=0, vmax=1, cmap='Oranges')
 
                     # plot static map (improves visualization)
                     rec = loader.dataset.ixes[counter]
@@ -405,7 +405,7 @@ def viz_model_preds(version,
                     plt.setp(ax.spines.values(), color='b', linewidth=2)
                     plt.legend(handles=[
                         mpatches.Patch(color=(138. / 255, 43. / 255, 226. / 255, 1.0),
-                                       label='human Segmentation (predict)'),
+                                       label='Road Segmentation (predict)'),
                         # for visualization purposes only
                         mpatches.Patch(color=(1.0, 0.0, 0.0), label='Ego Vehicle'),
                         mpatches.Patch(color=(0.31, 1.00, 0.50, 0.5), label='Map'),

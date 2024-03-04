@@ -368,19 +368,21 @@ class NuscData(torch.utils.data.Dataset):
                 # fillPoly takes pts in (y,x) format
                 cv2.fillPoly(img[0], [pts], 1.0)
             # add category such as: human, animal, etc.
-            elif inst['category_name'].split('.')[0] == 'human':
-
-                box = Box(inst['translation'], inst['size'], Quaternion(inst['rotation']))
-                box.translate(trans)
-                box.rotate(rot)
-
-                pts = box.bottom_corners()[:2].T
-                pts = np.round(
-                    (pts - self.bx[:2] + self.dx[:2]/2.) / self.dx[:2]
-                    ).astype(np.int32)
-                pts[:, [1, 0]] = pts[:, [0, 1]]
-                # fillPoly takes pts in (y,x) format
-                cv2.fillPoly(img[1], [pts], 1.0)
+            # elif inst['category_name'].split('.')[0] == 'human':
+            #
+            #     box = Box(inst['translation'], inst['size'], Quaternion(inst['rotation']))
+            #     box.translate(trans)
+            #     box.rotate(rot)
+            #
+            #     pts = box.bottom_corners()[:2].T
+            #     pts = np.round(
+            #         (pts - self.bx[:2] + self.dx[:2]/2.) / self.dx[:2]
+            #         ).astype(np.int32)
+            #     pts[:, [1, 0]] = pts[:, [0, 1]]
+            #     # fillPoly takes pts in (y,x) format
+            #     cv2.fillPoly(img[1], [pts], 1.0)
+            # add road category
+            img[1] = self.get_binmap(rec, self.nusc_maps)
 
         return torch.Tensor(img)
 
