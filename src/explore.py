@@ -404,7 +404,7 @@ def viz_model_preds(version,
                     ax.get_yaxis().set_ticks([])
                     plt.setp(ax.spines.values(), color='b', linewidth=2)
                     plt.legend(handles=[
-                        mpatches.Patch(color=(1, 128. / 255, 0, 1.0),
+                        mpatches.Patch(color=(138. / 255, 43. / 255, 226. / 255, 1.0),
                                        label='human Segmentation (predict)'),
                         # for visualization purposes only
                         mpatches.Patch(color=(1.0, 0.0, 0.0), label='Ego Vehicle'),
@@ -412,7 +412,7 @@ def viz_model_preds(version,
                         mlines.Line2D([], [], color=(1.0, 0.0, 0.0), alpha=0.5, label='Road divider'),
                         mlines.Line2D([], [], color=(0.0, 0.0, 1.0), alpha=0.5, label='Lane divider')
                     ], loc=(0.01, 0.80))
-                    plt.imshow(out[si][1].squeeze(0), vmin=0, vmax=1, cmap='Oranges')
+                    plt.imshow(out[si][1].squeeze(0), vmin=0, vmax=1, cmap='Purples')
 
                     # plot static map (improves visualization)
                     rec = loader.dataset.ixes[counter]
