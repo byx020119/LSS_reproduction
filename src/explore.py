@@ -364,7 +364,6 @@ def viz_model_preds(version,
                     # plot static map (improves visualization)
                     rec = loader.dataset.ixes[counter]
                     plot_nusc_map(rec, nusc_maps, loader.dataset.nusc, scene2map, dx, bx)
-                    temp = out.shape[3]
                     plt.xlim((out.shape[3], 0))
                     plt.ylim((0, out.shape[3]))
                     add_ego(bx, dx)
@@ -469,7 +468,6 @@ def viz_model_preds(version,
                     # plot static map (improves visualization)
                     rec = loader.dataset.ixes[counter]
                     plot_nusc_map(rec, nusc_maps, loader.dataset.nusc, scene2map, dx, bx)
-                    temp = out.shape[3]
                     plt.xlim((out.shape[3], 0))
                     plt.ylim((0, out.shape[3]))
                     add_ego(bx, dx)
