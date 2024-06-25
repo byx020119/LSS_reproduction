@@ -4,7 +4,7 @@
 
 Based on the [LSS](https://github.com/nv-tlabs/lift-splat-shoot) (Lift, Splat, Shoot) algorithm, an extension was made to simultaneously detect vehicles, vehicle-road interactions, lane lines, and segmentation parts of the road, resulting in slightly improved performance compared to what was reported in the [paper](https://arxiv.org/abs/2008.05711).
 
-基于[LSS](https://github.com/nv-tlabs/lift-splat-shoot) (Lift, Splat, Shoot)算法，增加了同时检测车辆、道路与车辆、车道线、道路的分割部分。并获得了比[论文](https://arxiv.org/abs/2008.05711)中提到的稍好的效果。
+基于[LSS](https://github.com/nv-tlabs/lift-splat-shoot) (Lift, Splat, Shoot)算法，增加了同时检测车辆、道路与车辆、车道线、道路的分割部分。并获得了比[论文](https://arxiv.org/abs/2008.05711)中提到的稍好的效果。为个人本科毕业设计。
 
 
 ## Quikly start
